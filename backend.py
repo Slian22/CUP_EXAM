@@ -1,10 +1,21 @@
-import requests
-from requests.exceptions import RequestException
-import re
 import os
-import sys
-import xlrd
+import shutil
+try:
+    import requests
+except ImportError:
+    if os.system('pip3 install requests'):
+        os.system('pip install requests')
+    import requests
+from requests.exceptions import RequestException
+try:
+    import xlrd
+except ImportError:
+    if os.system('pip3 install xlrd'):
+        os.system('pip install xlrd')
+    import xlrd
 from xlrd import xldate_as_tuple
+import re
+import sys
 
 base_dir = sys.path[0]
 if sys.platform.startswith('win'):
@@ -20,6 +31,14 @@ name_col = 0
 teacher_col = 0
 sc_col = 0
 sheet = None
+
+
+def remove(path):
+    if os.path.exists(path):
+        if os.path.isdir(path):
+            shutil.rmtree(path)
+        else:
+            os.remove(path)
 
 
 def get_one_page(url, headers):
@@ -193,7 +212,7 @@ def new_version():
     if not html:
         return None
     version, content = re.findall('New version (.*?)</h3>.*?<p>(.*?)</p>', html, re.S)[0]
-    with open(base_dir+'.version', 'r') as f:
+    with open(base_dir + '.version', 'r') as f:
         this_ver = f.read().strip()
     if this_ver == version:
         return None
@@ -203,10 +222,10 @@ def new_version():
 
 def update_version():
     package = requests.get('https://github.com/Rhythmicc/CUP_EXAM/archive/master.zip', headers).content
-    with open(base_dir+'exam.zip', 'wb') as f:
+    with open(base_dir + 'exam.zip', 'wb') as f:
         f.write(package)
     root_dir = dir_char.join(base_dir.split(dir_char)[:-2]) + dir_char
-    while os.system('unzip -o '+base_dir+'exam.zip -d '+root_dir):
+    while os.system('unzip -o ' + base_dir + 'exam.zip -d ' + root_dir):
         if dir_char == '\\':
             package = requests.get('http://gnuwin32.sourceforge.net/downlinks/unzip.php', headers).content
             with open('unzip.exe', 'wb') as f:
@@ -214,14 +233,13 @@ def update_version():
             os.system('unzip.exe')
             exit('ERROR! No command "unzip", but do not worry about that, We have download it for you.')
         else:
-            os.system('sudo apt-get install unzip')
-    status = os.system('python3 '+root_dir+'CUP_EXAM-master/setup.py --direct')
-    if status:
+            if sys.platform == 'darwin':
+                os.system('brew install unzip')
+            else:
+                os.system('sudo apt-get install unzip')
+    if os.system('python3 ' + root_dir + 'CUP_EXAM-master/setup.py --direct'):
         os.system('python ' + root_dir + 'CUP_EXAM-master/setup.py --direct')
-    if dir_char == '/':
-        os.system('rm '+base_dir+'exam.zip')
-    else:
-        os.system('del '+base_dir+'exam.zip')
+    remove(base_dir + 'exam.zip')
 
 
 if __name__ == '__main__':
