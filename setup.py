@@ -44,6 +44,7 @@ if system.startswith('win'):
     else:
         remove(base_dir + 'exam.sh')
 else:
+    os.system('chmod 777 %sexam.sh' % base_dir)
     if sys.argv[1] != '--direct':
         remove_command()
         os.system('echo alias exam="%sexam.sh" >> ~/.bashrc' % base_dir)
@@ -57,3 +58,4 @@ if flag:
     remove('%s.last_title.txt' % base_dir)
     remove('%s.idea' % base_dir)
 remove('%scontent.xls' % base_dir)
+remove('%scontent.xlsx' % base_dir)
