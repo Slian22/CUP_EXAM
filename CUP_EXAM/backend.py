@@ -5,10 +5,12 @@ import os
 import sys
 import xlrd
 from xlrd import xldate_as_tuple
+__VERSION__ = '2.6'
 
 base_dir = sys.path[0]
 if sys.platform.startswith('win'):
     dir_char = '\\'
+    base_dir = dir_char.join(base_dir.split(dir_char)[:-1])
 else:
     dir_char = '/'
 base_dir += dir_char
@@ -22,7 +24,7 @@ teacher_col = 0
 sc_col = 0
 sheet = None
 try:
-    with open(base_dir + '.last_title.txt', 'r') as f:
+    with open(base_dir + '.last_title', 'r') as f:
         is_xls = f.readlines()[-1].strip().endswith('xls')
 except:
     is_xls = False
@@ -55,7 +57,7 @@ def getNewXls(url):
     if not html:
         return False
     title = re.findall('<h3>(.*?)</h3>', html, re.S)[0]
-    als = re.findall('<a.*?href="(.*?)">.*?>(.*?)<', html, re.S)
+    als = re.findall('<a.*?href="(.*?)">(.*?)<', html, re.S)
     res = None
     global is_xls
     for a in als:
@@ -71,9 +73,9 @@ def getNewXls(url):
     content = requests.get(url, headers).content
     with open(real_file, 'wb') as file:
         file.write(content)
-    with open(base_dir + '.last_title.txt', 'w') as file:
+    with open(base_dir + '.last_title', 'w') as file:
         file.write(title + '\n')
-        file.write(res[1] + '\n')
+        file.write(res[0] + '\n')
     return True
 
 
@@ -181,12 +183,17 @@ def search(exp):
             for i, v in enumerate(line):
                 if not title_bar[i].strip():
                     continue
+                if '号' in title_bar[i] or '人数' in title_bar[i]:
+                    continue
                 if i != name_col and i != teacher_col and i != sc_col:
                     try:
                         v = v.strip()
                     except:
                         pass
                     res += title_bar[i] + ': %s\n' % v
+    if not res.strip():
+        return None
+    res += '-' * 50 + '\n'
     del res_set
     return res
 
@@ -197,13 +204,13 @@ def pre_check():
 
 def new_note_check():
     try:
-        with open(base_dir + '.last_title.txt', 'r') as file:
+        with open(base_dir + '.last_title', 'r') as file:
             lines = file.readlines()
             title = lines[0].strip()
             filename = lines[1].strip()
     except:
         title = filename = '****'
-    html = get_one_page('http://www.cup.edu.cn/jwc/Ttrends/index.htm', headers)
+    html = get_one_page('http://cup.edu.cn/jwc/jxjs/Ttrends/index.htm', headers)
     if not html:
         return -1
     ls = re.findall('<li>(.*?)</li>', html, re.S)
@@ -211,52 +218,13 @@ def new_note_check():
         content = re.findall('<a.*?href="(.*?)">(.*?)</a>', i, re.S)
         if content:
             addr, new_title = content[0]
+            new_title = new_title.strip()
             if new_title == title:
-                html = get_one_page('http://www.cup.edu.cn/jwc/Ttrends/' + addr, headers)
+                html = get_one_page('http://www.cup.edu.cn/jwc/jxjs/Ttrends/' + addr, headers)
                 aim_li = re.findall('<li.*?>(.*?)</li>', html, re.S)[-1]
-                new_filename = re.findall('<font.*?>(.*?)</font>', aim_li, re.S)[0]
+                new_filename = re.findall('<a href="(.*?)".*?>', aim_li, re.S)[0]
                 if new_filename != filename:
-                    return ['http://www.cup.edu.cn/jwc/Ttrends/' + addr, new_filename, 0]
+                    return ['http://www.cup.edu.cn/jwc/jxjs/Ttrends/' + addr, new_filename, 0]
                 return 0
             if new_title.endswith('考试安排'):
-                return ['http://www.cup.edu.cn/jwc/Ttrends/' + addr, new_title, 1]
-
-
-def new_version():
-    html = get_one_page('https://github.com/Rhythmicc/CUP_EXAM', headers)
-    if not html:
-        return None
-    version, content = re.findall('New version (.*?)</h3>.*?<li>(.*?)</li>', html, re.S)[0]
-    with open(base_dir + '.version', 'r') as file:
-        this_ver = file.read().strip()
-    if this_ver == version:
-        return None
-    else:
-        return [version, content]
-
-
-def update_version():
-    package = requests.get('https://github.com/Rhythmicc/CUP_EXAM/archive/master.zip', headers).content
-    with open(base_dir + 'exam.zip', 'wb') as file:
-        file.write(package)
-    root_dir = dir_char.join(base_dir.split(dir_char)[:-2]) + dir_char
-    while os.system('unzip -o ' + base_dir + 'exam.zip -d ' + root_dir):
-        if dir_char == '\\':
-            package = requests.get('http://gnuwin32.sourceforge.net/downlinks/unzip.php', headers).content
-            with open('unzip.exe', 'wb') as file:
-                file.write(package)
-            os.system('unzip.exe')
-            exit('ERROR! No command "unzip", but do not worry about that, We have download it for you.')
-        else:
-            os.system('sudo apt-get install unzip')
-    status = os.system('python3 ' + root_dir + 'CUP_EXAM-master/setup.py --direct')
-    if status:
-        os.system('python ' + root_dir + 'CUP_EXAM-master/setup.py --direct')
-    if dir_char == '/':
-        os.system('rm ' + base_dir + 'exam.zip')
-    else:
-        os.system('del ' + base_dir + 'exam.zip')
-
-
-if __name__ == '__main__':
-    update_version()
+                return ['http://www.cup.edu.cn/jwc/jxjs/Ttrends/' + addr, new_title, 1]
