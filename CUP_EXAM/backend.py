@@ -224,6 +224,7 @@ def new_note_check():
             title = lines[0].strip()
             filename = lines[1].strip()
     except:
+
         title = filename = '****'
     html = get_one_page('http://cup.edu.cn/jwc/jxjs/Ttrends/index.htm', headers)
     if not html:
